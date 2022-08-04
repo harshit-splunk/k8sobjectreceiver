@@ -1,0 +1,6 @@
+build/otelcorecol
+build/__debug_bin
+build/.vscode
+secrets
+.idea
+serviceaccount

@@ -1,0 +1,19 @@
+dist:
+  module: go.opentelemetry.io/collector/cmd/otelcorecol
+  name: otelcorecol
+  description: Local OpenTelemetry Collector binary, testing only.
+  version: 0.56.0-dev
+  otelcol_version: 0.56.0
+  output_path: ./build
+
+receivers:
+  - gomod: github.com/harshit-splunk/k8sobjectreceiver v0.0.0
+    import: github.com/harshit-splunk/k8sobjectreceiver
+exporters:
+  - import: go.opentelemetry.io/collector/exporter/loggingexporter
+    gomod: go.opentelemetry.io/collector v0.56.0
+  - import: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter
+    gomod: github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.56.0
+
+replaces:
+  - github.com/harshit-splunk/k8sobjectreceiver => /Users/hvaghani/go/src/github.com/harshit-splunk/k8sobjectreceiver
