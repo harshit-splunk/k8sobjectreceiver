@@ -1,0 +1,14 @@
+receivers:
+  objects: 
+
+processors:
+
+exporters:
+  logging:
+
+service:
+  pipelines:
+    logs:
+      receivers: [objects]
+      processors: []
+      exporters: [logging]

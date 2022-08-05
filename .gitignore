@@ -13,3 +13,10 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+build/otelcorecol
+build/__debug_bin
+build/.vscode
+secrets
+.idea
+serviceaccount

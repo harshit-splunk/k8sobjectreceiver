@@ -1,0 +1,23 @@
+receivers:
+  objects: 
+
+processors:
+
+exporters:
+  logging:
+  splunk_hec:
+    token: "00000000-0000-0000-0000-000000000000"
+    endpoint: "https://10.202.20.29:8088/services/collector"
+    source: "otel"
+    sourcetype: "otel"
+    index: "main"
+    tls:
+      insecure_skip_verify: true
+
+
+service:
+  pipelines:
+    logs:
+      receivers: [objects]
+      processors: []
+      exporters: [logging, splunk_hec]
