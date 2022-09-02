@@ -9,7 +9,8 @@ import (
 )
 
 const (
-	typeStr = "objects"
+	typeStr   = "k8sobjects"
+	stability = component.StabilityLevelAlpha
 )
 
 func NewFactory() component.ReceiverFactory {
@@ -18,6 +19,7 @@ func NewFactory() component.ReceiverFactory {
 		createDefaultConfig,
 		component.WithLogsReceiver(
 			createLogsReceiver,
+			stability,
 		),
 	)
 }
