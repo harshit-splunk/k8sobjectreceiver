@@ -47,7 +47,7 @@ func (kr k8sobjectreceiver) Start(ctx context.Context, host component.Host) erro
 	kr.ctx, kr.cancel = context.WithCancel(ctx)
 
 	for _, object := range kr.objects {
-		kr.start(object)
+		go kr.start(object)
 	}
 	return nil
 }
