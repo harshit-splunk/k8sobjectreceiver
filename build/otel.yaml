@@ -1,23 +1,19 @@
 receivers:
   k8sobjects: 
     objects:
-      core/v1:
+      v1:
         - name: pods
           mode: pull
           interval: 30s
-          # label_selector: k8s-app=kube-dns
-      #   - name: pods
-      #     mode: pull
-      #     interval: 30s
-      # apps/v1:
-      #   - name: daemonsets
-      #     mode: pull
-      #     interval: 30s
-      #     label_selector: app=flannel
-        # - name: deployments
-        #   mode: pull
-        #   interval: 30s
-        #   label_selector: k8s-app=kube-dns
+      apps/v1:
+        - name: daemonsets
+          mode: pull
+          interval: 30s
+          label_selector: app=flannel
+        - name: deployments
+          mode: pull
+          interval: 30s
+          label_selector: k8s-app=kube-dns
 
 processors:
 

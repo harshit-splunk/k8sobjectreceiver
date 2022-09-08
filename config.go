@@ -8,9 +8,8 @@ import (
 	"go.opentelemetry.io/collector/config"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/dynamic/dynamicinformer"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/cache"
 )
 
 type Mode string
@@ -33,7 +32,6 @@ type K8sObjectsConfig struct {
 	FieldSelector string        `mapstructure:"field_selector"`
 	Interval      time.Duration `mapstructure:"interval"`
 	gvr           *schema.GroupVersionResource
-	listers       []cache.GenericNamespaceLister
 }
 
 type Config struct {
@@ -45,18 +43,32 @@ type Config struct {
 }
 
 func (c *Config) Validate() error {
+
+	validObjects, err := c.getValidObjects()
+	if err != nil {
+		return err
+	}
 	for apiGroup, apiGroupConf := range c.Objects {
-		split := strings.Split(apiGroup, "/")
-		if len(split) != 2 {
-			return fmt.Errorf("invalid group/version: %v", apiGroup)
+		validResources, ok := validObjects[apiGroup]
+		if !ok {
+			return fmt.Errorf("api group %v not found", apiGroup)
 		}
-		if split[0] == "core" {
-			split[0] = ""
+
+		split := strings.Split(apiGroup, "/")
+		if len(split) == 1 && apiGroup == "v1" {
+			split = []string{"", apiGroup}
+		} else if len(split) != 2 {
+			return fmt.Errorf("invalid group/version: %v", apiGroup)
 		}
 		for _, obj := range apiGroupConf {
 			if _, ok := modeMap[obj.Mode]; !ok {
 				return fmt.Errorf("invalid mode: %v", obj.Mode)
 			}
+
+			if _, ok := validResources[obj.Name]; !ok {
+				return fmt.Errorf("api resource %v not found in api group %v", obj.Name, apiGroup)
+			}
+
 			obj.gvr = &schema.GroupVersionResource{
 				Group:    split[0],
 				Version:  split[1],
@@ -72,22 +84,42 @@ func (c *Config) getClient() (dynamic.Interface, error) {
 		return c.makeClient()
 	}
 	config, err := rest.InClusterConfig()
+
 	if err != nil {
 		return nil, err
 	}
+
+	client, _ := kubernetes.NewForConfig(config)
+	dc := client.Discovery()
+	dc.ServerPreferredResources()
 	return dynamic.NewForConfig(config)
 }
 
-func (object *K8sObjectsConfig) generateListers(factory dynamicinformer.DynamicSharedInformerFactory) {
-	if len(object.listers) == 0 {
-		lister := factory.ForResource(*object.gvr).Lister()
-		if length := len(object.Namespaces); length > 0 {
-			object.listers = make([]cache.GenericNamespaceLister, len(object.Namespaces))
-			for i, ns := range object.Namespaces {
-				object.listers[i] = lister.ByNamespace(ns)
-			}
-		} else {
-			object.listers = []cache.GenericNamespaceLister{lister}
+func (c *Config) getValidObjects() (map[string]map[string]struct{}, error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return nil, err
+	}
+
+	dc := client.Discovery()
+	res, err := dc.ServerPreferredResources()
+	if err != nil {
+		return nil, err
+	}
+
+	validObjects := make(map[string]map[string]struct{}, len(res))
+
+	for _, group := range res {
+		name := group.GroupVersion
+		validObjects[name] = make(map[string]struct{}, len(group.APIResources))
+		for _, resource := range group.APIResources {
+			validObjects[name][resource.Name] = struct{}{}
 		}
 	}
+	return validObjects, nil
 }
