@@ -23,7 +23,7 @@ type k8sobjectreceiver struct {
 }
 
 func newReceiver(params component.ReceiverCreateSettings, config *Config, consumer consumer.Logs) (component.LogsReceiver, error) {
-	client, err := config.getClient()
+	client, err := config.getDynamicClient()
 	if err != nil {
 		return nil, err
 	}

@@ -1,0 +1,24 @@
+receivers:
+  k8sobjects/invalid_api:
+    objects:
+      fakev1:
+        - name: events
+          mode: watch
+  k8sobjects/invalid_resource:
+    objects:
+      v1:
+        - name: fake_resource
+          mode: watch
+
+processors:
+  nop:
+
+exporters:
+  nop:
+
+service:
+  pipelines:
+    logs:
+      receivers: [k8sobjects]
+      processors: [nop]
+      exporters: [nop]
