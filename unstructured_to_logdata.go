@@ -5,18 +5,41 @@ import (
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/plog"
+	semconv "go.opentelemetry.io/collector/semconv/v1.6.1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+)
+
+const (
+	// Number of log attributes to add to the plog.LogRecordSlice.
+	totalLogAttributes = 7
+
+	// Number of resource attributes to add to the plog.ResourceLogs.
+	totalResourceAttributes = 6
 )
 
 func unstructuredToLogData(event *unstructured.Unstructured) plog.Logs {
 	out := plog.NewLogs()
-	rls := out.ResourceLogs().AppendEmpty()
-	sl := rls.ScopeLogs().AppendEmpty()
-	logSlice := sl.LogRecords()
-	logSlice.EnsureCapacity(1)
-	record := logSlice.AppendEmpty()
-	dest := record.Body()
+	rl := out.ResourceLogs().AppendEmpty()
+	sl := rl.ScopeLogs().AppendEmpty()
+	lr := sl.LogRecords().AppendEmpty()
+	dest := lr.Body()
+
+	resourceAttrs := rl.Resource().Attributes()
+	resourceAttrs.EnsureCapacity(totalResourceAttributes)
+
+	resourceAttrs.UpsertString("k8s.object.kind", event.GetKind())
+	resourceAttrs.UpsertString("k8s.object.api_version", event.GetAPIVersion())
+	if namespace := event.GetNamespace(); namespace != "" {
+		resourceAttrs.UpsertString(semconv.AttributeK8SNamespaceName, namespace)
+	}
+
 	toAttributeMap(event.Object).CopyTo(dest)
+
+	attrs := lr.Attributes()
+	attrs.EnsureCapacity(totalLogAttributes)
+
+	attrs.UpsertString("k8s.object.name", event.GetName())
+	attrs.UpsertString("k8s.object.resource_version", event.GetResourceVersion())
 	return out
 
 }

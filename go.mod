@@ -2,6 +2,8 @@ module github.com/harshit-splunk/k8sobjectreceiver
 
 require (
 	go.opentelemetry.io/collector v0.58.0
+	go.opentelemetry.io/collector/pdata v0.58.0
+	go.opentelemetry.io/collector/semconv v0.56.0
 	go.uber.org/zap v1.21.0
 	k8s.io/apimachinery v0.24.3
 	k8s.io/client-go v0.24.3
@@ -19,7 +21,6 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -31,7 +32,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	go.opentelemetry.io/collector/pdata v0.58.0 // indirect
 	go.opentelemetry.io/otel v1.9.0 // indirect
 	go.opentelemetry.io/otel/metric v0.31.0 // indirect
 	go.opentelemetry.io/otel/trace v1.9.0 // indirect

@@ -88,10 +88,6 @@ func (c *Config) getClient() (dynamic.Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	client, _ := kubernetes.NewForConfig(config)
-	dc := client.Discovery()
-	dc.ServerPreferredResources()
 	return dynamic.NewForConfig(config)
 }
 

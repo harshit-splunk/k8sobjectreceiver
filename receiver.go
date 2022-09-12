@@ -47,7 +47,7 @@ func (kr k8sobjectreceiver) Start(ctx context.Context, host component.Host) erro
 	kr.ctx, kr.cancel = context.WithCancel(ctx)
 
 	for _, object := range kr.objects {
-		go kr.start(object)
+		kr.start(object)
 	}
 	return nil
 }
@@ -64,19 +64,19 @@ func (kr *k8sobjectreceiver) start(object *K8sObjectsConfig) {
 	switch object.Mode {
 	case PullMode:
 		if len(object.Namespaces) == 0 {
-			kr.startPull(object, resource)
+			go kr.startPull(object, resource)
 		} else {
 			for _, ns := range object.Namespaces {
-				kr.startPull(object, resource.Namespace(ns))
+				go kr.startPull(object, resource.Namespace(ns))
 			}
 		}
 
 	case WatchMode:
 		if len(object.Namespaces) == 0 {
-			kr.startWatch(object, resource)
+			go kr.startWatch(object, resource)
 		} else {
 			for _, ns := range object.Namespaces {
-				kr.startWatch(object, resource.Namespace(ns))
+				go kr.startWatch(object, resource.Namespace(ns))
 			}
 		}
 	}
