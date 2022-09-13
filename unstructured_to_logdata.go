@@ -11,10 +11,10 @@ import (
 
 const (
 	// Number of log attributes to add to the plog.LogRecordSlice.
-	totalLogAttributes = 2
+	totalLogAttributes = 3
 
 	// Number of resource attributes to add to the plog.ResourceLogs.
-	totalResourceAttributes = 3
+	totalResourceAttributes = 2
 )
 
 func unstructuredToLogData(event *unstructured.Unstructured) plog.Logs {
@@ -29,9 +29,6 @@ func unstructuredToLogData(event *unstructured.Unstructured) plog.Logs {
 
 	resourceAttrs.UpsertString("k8s.object.kind", event.GetKind())
 	resourceAttrs.UpsertString("k8s.object.api_version", event.GetAPIVersion())
-	if namespace := event.GetNamespace(); namespace != "" {
-		resourceAttrs.UpsertString(semconv.AttributeK8SNamespaceName, namespace)
-	}
 
 	toAttributeMap(event.Object).CopyTo(dest)
 
@@ -40,18 +37,36 @@ func unstructuredToLogData(event *unstructured.Unstructured) plog.Logs {
 
 	attrs.UpsertString("k8s.object.name", event.GetName())
 	attrs.UpsertString("k8s.object.resource_version", event.GetResourceVersion())
+	if namespace := event.GetNamespace(); namespace != "" {
+		attrs.UpsertString(semconv.AttributeK8SNamespaceName, namespace)
+	}
 	return out
 
 }
 
 func unstructuredListToLogData(event *unstructured.UnstructuredList) plog.Logs {
 	out := plog.NewLogs()
-	rls := out.ResourceLogs().AppendEmpty()
-	sl := rls.ScopeLogs().AppendEmpty()
+	rl := out.ResourceLogs().AppendEmpty()
+	sl := rl.ScopeLogs().AppendEmpty()
+
+	resourceAttrs := rl.Resource().Attributes()
+	resourceAttrs.EnsureCapacity(totalResourceAttributes)
+
+	resourceAttrs.UpsertString("k8s.object.kind", event.Items[0].GetKind())
+	resourceAttrs.UpsertString("k8s.object.api_version", event.GetAPIVersion())
+
 	logSlice := sl.LogRecords()
 	logSlice.EnsureCapacity(len(event.Items))
 	for _, e := range event.Items {
 		record := logSlice.AppendEmpty()
+		attrs := record.Attributes()
+		attrs.EnsureCapacity(totalLogAttributes)
+
+		attrs.UpsertString("k8s.object.name", e.GetName())
+		attrs.UpsertString("k8s.object.resource_version", event.GetResourceVersion())
+		if namespace := e.GetNamespace(); namespace != "" {
+			attrs.UpsertString(semconv.AttributeK8SNamespaceName, namespace)
+		}
 		dest := record.Body()
 		toAttributeMap(e.Object).CopyTo(dest)
 	}

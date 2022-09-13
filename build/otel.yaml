@@ -4,7 +4,7 @@ receivers:
       v1:
         - name: pods
           mode: pull
-          interval: 30s
+          interval: 10m
       # apps/v1:
       #   - name: daemonsets
       #     mode: pull
@@ -21,7 +21,7 @@ exporters:
   logging:
   splunk_hec:
     token: "00000000-0000-0000-0000-000000000000"
-    endpoint: "https://10.202.8.127:8088/services/collector"
+    endpoint: "https://10.202.19.241:8088/services/collector"
     source: "otel"
     sourcetype: "otel"
     index: "main"
