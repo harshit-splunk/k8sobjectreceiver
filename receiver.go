@@ -13,13 +13,12 @@ import (
 )
 
 type k8sobjectreceiver struct {
-	setting   component.ReceiverCreateSettings
-	objects   []*K8sObjectsConfig
-	client    dynamic.Interface
-	consumer  consumer.Logs
-	startTime time.Time
-	ctx       context.Context
-	cancel    context.CancelFunc
+	setting         component.ReceiverCreateSettings
+	objects         []*K8sObjectsConfig
+	stopperChanList []chan struct{}
+	client          dynamic.Interface
+	consumer        consumer.Logs
+	startTime       time.Time
 }
 
 func newReceiver(params component.ReceiverCreateSettings, config *Config, consumer consumer.Logs) (component.LogsReceiver, error) {
@@ -44,51 +43,54 @@ func newReceiver(params component.ReceiverCreateSettings, config *Config, consum
 
 func (kr k8sobjectreceiver) Start(ctx context.Context, host component.Host) error {
 	kr.setting.Logger.Info("Object Receiver started")
-	kr.ctx, kr.cancel = context.WithCancel(ctx)
 
 	for _, object := range kr.objects {
-		kr.start(object)
+		kr.start(ctx, object)
 	}
 	return nil
 }
 
 func (kr k8sobjectreceiver) Shutdown(context.Context) error {
 	kr.setting.Logger.Info("Object Receiver stopped")
-	kr.cancel()
+	for _, stopperChan := range kr.stopperChanList {
+		close(stopperChan)
+	}
 	return nil
 }
 
-func (kr *k8sobjectreceiver) start(object *K8sObjectsConfig) {
+func (kr *k8sobjectreceiver) start(ctx context.Context, object *K8sObjectsConfig) {
 	resource := kr.client.Resource(*object.gvr)
 
 	switch object.Mode {
 	case PullMode:
 		if len(object.Namespaces) == 0 {
-			go kr.startPull(object, resource)
+			go kr.startPull(ctx, object, resource)
 		} else {
 			for _, ns := range object.Namespaces {
-				go kr.startPull(object, resource.Namespace(ns))
+				go kr.startPull(ctx, object, resource.Namespace(ns))
 			}
 		}
 
 	case WatchMode:
 		if len(object.Namespaces) == 0 {
-			go kr.startWatch(object, resource)
+			go kr.startWatch(ctx, object, resource)
 		} else {
 			for _, ns := range object.Namespaces {
-				go kr.startWatch(object, resource.Namespace(ns))
+				go kr.startWatch(ctx, object, resource.Namespace(ns))
 			}
 		}
 	}
 }
 
-func (kr *k8sobjectreceiver) startPull(config *K8sObjectsConfig, resource dynamic.ResourceInterface) {
+func (kr *k8sobjectreceiver) startPull(ctx context.Context, config *K8sObjectsConfig, resource dynamic.ResourceInterface) {
+	stopperChan := make(chan struct{})
+	kr.stopperChanList = append(kr.stopperChanList, stopperChan)
 	ticker := NewTicker(config.Interval)
 	defer ticker.Stop()
 	for {
 		select {
 		case <-ticker.C:
-			objects, err := resource.List(kr.ctx, metav1.ListOptions{
+			objects, err := resource.List(ctx, metav1.ListOptions{
 				FieldSelector: config.FieldSelector,
 				LabelSelector: config.LabelSelector,
 			})
@@ -96,9 +98,9 @@ func (kr *k8sobjectreceiver) startPull(config *K8sObjectsConfig, resource dynami
 				kr.setting.Logger.Error("error in pulling object", zap.String("resource", config.gvr.String()), zap.Error(err))
 			} else {
 				logs := unstructuredListToLogData(objects)
-				kr.consumer.ConsumeLogs(kr.ctx, logs)
+				kr.consumer.ConsumeLogs(ctx, logs)
 			}
-		case <-kr.ctx.Done():
+		case <-stopperChan:
 			return
 		}
 
@@ -106,9 +108,12 @@ func (kr *k8sobjectreceiver) startPull(config *K8sObjectsConfig, resource dynami
 
 }
 
-func (kr *k8sobjectreceiver) startWatch(config *K8sObjectsConfig, resource dynamic.ResourceInterface) {
+func (kr *k8sobjectreceiver) startWatch(ctx context.Context, config *K8sObjectsConfig, resource dynamic.ResourceInterface) {
 
-	watch, err := resource.Watch(kr.ctx, metav1.ListOptions{
+	stopperChan := make(chan struct{})
+	kr.stopperChanList = append(kr.stopperChanList, stopperChan)
+
+	watch, err := resource.Watch(ctx, metav1.ListOptions{
 		FieldSelector: config.FieldSelector,
 		LabelSelector: config.LabelSelector,
 	})
@@ -122,10 +127,9 @@ func (kr *k8sobjectreceiver) startWatch(config *K8sObjectsConfig, resource dynam
 		select {
 		case data := <-res:
 			udata := data.Object.(*unstructured.Unstructured)
-			kr.setting.Logger.Info(udata.GetName())
 			logs := unstructuredToLogData(udata)
-			kr.consumer.ConsumeLogs(kr.ctx, logs)
-		case <-kr.ctx.Done():
+			kr.consumer.ConsumeLogs(ctx, logs)
+		case <-stopperChan:
 			watch.Stop()
 			return
 		}

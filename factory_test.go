@@ -12,6 +12,7 @@ import (
 )
 
 func TestDefaultConfig(t *testing.T) {
+	t.Parallel()
 	cfg := createDefaultConfig()
 	rCfg, ok := cfg.(*Config)
 	require.True(t, ok)
@@ -22,6 +23,7 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestFactoryType(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, config.Type("k8sobjects"), NewFactory().Type())
 }
 
@@ -37,7 +39,7 @@ func TestCreateReceiver(t *testing.T) {
 	assert.Nil(t, r)
 
 	// Override for test.
-	rCfg.makeDynamicClient = getMockDynamicClient
+	rCfg.makeDynamicClient = newMockDynamicClient().getMockDynamicClient
 
 	r, err = createLogsReceiver(
 		context.Background(),

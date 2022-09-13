@@ -11,10 +11,10 @@ import (
 
 const (
 	// Number of log attributes to add to the plog.LogRecordSlice.
-	totalLogAttributes = 7
+	totalLogAttributes = 2
 
 	// Number of resource attributes to add to the plog.ResourceLogs.
-	totalResourceAttributes = 6
+	totalResourceAttributes = 3
 )
 
 func unstructuredToLogData(event *unstructured.Unstructured) plog.Logs {

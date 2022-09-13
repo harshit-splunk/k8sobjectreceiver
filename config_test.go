@@ -1,9 +1,7 @@
 package k8sobjectreceiver
 
 import (
-	"fmt"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
@@ -12,17 +10,10 @@ import (
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/service/servicetest"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/discovery"
-	fakeDiscovery "k8s.io/client-go/discovery/fake"
-	"k8s.io/client-go/dynamic"
-	fakeDynamic "k8s.io/client-go/dynamic/fake"
 )
 
 func TestLoadConfig(t *testing.T) {
+	t.Parallel()
 	factories, err := componenttest.NopFactories()
 	require.NoError(t, err)
 
@@ -54,17 +45,15 @@ func TestLoadConfig(t *testing.T) {
 			},
 		},
 	}
-
-	eq := reflect.DeepEqual(expected, r1.Objects)
-	fmt.Println(eq)
 	assert.EqualValues(t, expected, r1.Objects)
 
 	err = cfg.Validate()
-	require.NoError(t, err)
+	assert.NoError(t, err)
 
 }
 
 func TestValidConfigs(t *testing.T) {
+	t.Parallel()
 	factories, err := componenttest.NopFactories()
 	require.NoError(t, err)
 
@@ -87,53 +76,4 @@ func TestValidConfigs(t *testing.T) {
 	err = invalid_resource_config.Validate()
 	assert.ErrorContains(t, err, "api resource fake_resource not found in api group v1")
 
-}
-
-type MockDiscovery struct {
-	fakeDiscovery.FakeDiscovery
-}
-
-func (c *MockDiscovery) ServerPreferredResources() ([]*metav1.APIResourceList, error) {
-	return []*metav1.APIResourceList{
-		{
-			GroupVersion: "v1",
-			APIResources: []metav1.APIResource{
-				{
-					Name: "pods",
-					Kind: "Pods",
-				},
-				{
-					Name: "events",
-					Kind: "Events",
-				},
-			},
-		},
-	}, nil
-}
-
-func getMockDiscoveryClient() (discovery.ServerResourcesInterface, error) {
-	return &MockDiscovery{}, nil
-}
-
-func getMockDynamicClient() (dynamic.Interface, error) {
-	scheme := runtime.NewScheme()
-	objs := []runtime.Object{
-		&unstructured.Unstructured{
-			Object: map[string]interface{}{
-				"apiVersion": "v1",
-				"kind":       "Pods",
-				"metadata": map[string]interface{}{
-					"name": "fakePod",
-				},
-				"spec": "fakePod",
-			},
-		},
-	}
-
-	gvrToListKind := map[schema.GroupVersionResource]string{
-		{Group: "", Version: "v1", Resource: "pods"}: "PodList",
-	}
-
-	fakeClient := fakeDynamic.NewSimpleDynamicClientWithCustomListKinds(scheme, gvrToListKind, objs...)
-	return fakeClient, nil
 }
