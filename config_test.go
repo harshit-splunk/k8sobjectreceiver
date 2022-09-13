@@ -13,8 +13,13 @@ import (
 	"go.opentelemetry.io/collector/config"
 	"go.opentelemetry.io/collector/service/servicetest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	fakeDiscovery "k8s.io/client-go/discovery/fake"
+	"k8s.io/client-go/dynamic"
+	fakeDynamic "k8s.io/client-go/dynamic/fake"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -59,7 +64,7 @@ func TestLoadConfig(t *testing.T) {
 
 }
 
-func TestValidateConfigs(t *testing.T) {
+func TestValidConfigs(t *testing.T) {
 	factories, err := componenttest.NopFactories()
 	require.NoError(t, err)
 
@@ -108,4 +113,27 @@ func (c *MockDiscovery) ServerPreferredResources() ([]*metav1.APIResourceList, e
 
 func getMockDiscoveryClient() (discovery.ServerResourcesInterface, error) {
 	return &MockDiscovery{}, nil
+}
+
+func getMockDynamicClient() (dynamic.Interface, error) {
+	scheme := runtime.NewScheme()
+	objs := []runtime.Object{
+		&unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "v1",
+				"kind":       "Pods",
+				"metadata": map[string]interface{}{
+					"name": "fakePod",
+				},
+				"spec": "fakePod",
+			},
+		},
+	}
+
+	gvrToListKind := map[schema.GroupVersionResource]string{
+		{Group: "", Version: "v1", Resource: "pods"}: "PodList",
+	}
+
+	fakeClient := fakeDynamic.NewSimpleDynamicClientWithCustomListKinds(scheme, gvrToListKind, objs...)
+	return fakeClient, nil
 }
