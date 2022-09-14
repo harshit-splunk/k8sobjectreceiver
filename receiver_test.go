@@ -48,14 +48,12 @@ func TestPullObject(t *testing.T) {
 	rCfg.makeDynamicClient = mockClient.getMockDynamicClient
 	rCfg.makeDiscoveryClient = getMockDiscoveryClient
 
-	rCfg.Objects = map[string][]*K8sObjectsConfig{
-		"v1": {
-			{
-				Name:          "pods",
-				Mode:          PullMode,
-				Interval:      time.Second * 30,
-				LabelSelector: "environment=production",
-			},
+	rCfg.Objects = []*K8sObjectsConfig{
+		{
+			Name:          "pods",
+			Mode:          PullMode,
+			Interval:      time.Second * 30,
+			LabelSelector: "environment=production",
 		},
 	}
 
@@ -86,13 +84,11 @@ func TestWatchObject(t *testing.T) {
 	rCfg.makeDynamicClient = mockClient.getMockDynamicClient
 	rCfg.makeDiscoveryClient = getMockDiscoveryClient
 
-	rCfg.Objects = map[string][]*K8sObjectsConfig{
-		"v1": {
-			{
-				Name:       "pods",
-				Mode:       WatchMode,
-				Namespaces: []string{"default"},
-			},
+	rCfg.Objects = []*K8sObjectsConfig{
+		{
+			Name:       "pods",
+			Mode:       WatchMode,
+			Namespaces: []string{"default"},
 		},
 	}
 

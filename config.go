@@ -37,7 +37,7 @@ type K8sObjectsConfig struct {
 
 type Config struct {
 	config.ReceiverSettings `mapstructure:",squash"`
-	Objects                 map[string][]*K8sObjectsConfig `mapstructure:"objects"`
+	Objects                 []*K8sObjectsConfig `mapstructure:"objects"`
 
 	// For mocking purposes only.
 	makeDiscoveryClient func() (discovery.ServerResourcesInterface, error)
@@ -50,36 +50,19 @@ func (c *Config) Validate() error {
 	if err != nil {
 		return err
 	}
-	for apiGroup, apiGroupConf := range c.Objects {
-		validResources, ok := validObjects[apiGroup]
+	for _, object := range c.Objects {
+		gvr, ok := validObjects[object.Name]
 		if !ok {
-			return fmt.Errorf("api group %v not found", apiGroup)
+			return fmt.Errorf("resource %v not found", object.Name)
 		}
 
-		split := strings.Split(apiGroup, "/")
-		if len(split) == 1 && apiGroup == "v1" {
-			split = []string{"", apiGroup}
-		} else if len(split) != 2 {
-			return fmt.Errorf("invalid group/version: %v", apiGroup)
+		if object.Mode == "" {
+			object.Mode = PullMode
+		} else if _, ok := modeMap[object.Mode]; !ok {
+			return fmt.Errorf("invalid mode: %v", object.Mode)
 		}
-		for _, obj := range apiGroupConf {
 
-			if obj.Mode == "" {
-				obj.Mode = PullMode
-			} else if _, ok := modeMap[obj.Mode]; !ok {
-				return fmt.Errorf("invalid mode: %v", obj.Mode)
-			}
-
-			if _, ok := validResources[obj.Name]; !ok {
-				return fmt.Errorf("api resource %v not found in api group %v", obj.Name, apiGroup)
-			}
-
-			obj.gvr = &schema.GroupVersionResource{
-				Group:    split[0],
-				Version:  split[1],
-				Resource: obj.Name,
-			}
-		}
+		object.gvr = gvr
 	}
 	return c.ReceiverSettings.Validate()
 }
@@ -114,7 +97,7 @@ func (c *Config) getDynamicClient() (dynamic.Interface, error) {
 	return dynamic.NewForConfig(config)
 }
 
-func (c *Config) getValidObjects() (map[string]map[string]struct{}, error) {
+func (c *Config) getValidObjects() (map[string]*schema.GroupVersionResource, error) {
 	dc, err := c.getDiscoveryClient()
 	dc.ServerPreferredResources()
 	if err != nil {
@@ -126,14 +109,21 @@ func (c *Config) getValidObjects() (map[string]map[string]struct{}, error) {
 		return nil, err
 	}
 
-	validObjects := make(map[string]map[string]struct{}, len(res))
+	validObjects := make(map[string]*schema.GroupVersionResource)
 
 	for _, group := range res {
-		name := group.GroupVersion
-		validObjects[name] = make(map[string]struct{}, len(group.APIResources))
-		for _, resource := range group.APIResources {
-			validObjects[name][resource.Name] = struct{}{}
+		split := strings.Split(group.GroupVersion, "/")
+		if len(split) == 1 && group.GroupVersion == "v1" {
+			split = []string{"", "v1"}
 		}
+		for _, resource := range group.APIResources {
+			validObjects[resource.Name] = &schema.GroupVersionResource{
+				Group:    split[0],
+				Version:  split[1],
+				Resource: resource.Name,
+			}
+		}
+
 	}
 	return validObjects, nil
 }

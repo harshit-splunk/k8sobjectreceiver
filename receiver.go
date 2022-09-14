@@ -27,16 +27,11 @@ func newReceiver(params component.ReceiverCreateSettings, config *Config, consum
 		return nil, err
 	}
 
-	objects := make([]*K8sObjectsConfig, 0)
-	for _, objs := range config.Objects {
-		objects = append(objects, objs...)
-	}
-
 	return k8sobjectreceiver{
 		client:    client,
 		setting:   params,
 		consumer:  consumer,
-		objects:   objects,
+		objects:   config.Objects,
 		startTime: time.Now(),
 	}, nil
 }

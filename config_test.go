@@ -29,20 +29,18 @@ func TestLoadConfig(t *testing.T) {
 	r1 := cfg.Receivers[config.NewComponentID(typeStr)].(*Config)
 	r1.makeDiscoveryClient = getMockDiscoveryClient
 
-	expected := map[string][]*K8sObjectsConfig{
-		"v1": {
-			{
-				Name:          "pods",
-				Mode:          PullMode,
-				Interval:      time.Second * 30,
-				FieldSelector: "status.phase=Running",
-				LabelSelector: "environment in (production),tier in (frontend)",
-			},
-			{
-				Name:       "events",
-				Mode:       WatchMode,
-				Namespaces: []string{"default"},
-			},
+	expected := []*K8sObjectsConfig{
+		{
+			Name:          "pods",
+			Mode:          PullMode,
+			Interval:      time.Second * 30,
+			FieldSelector: "status.phase=Running",
+			LabelSelector: "environment in (production),tier in (frontend)",
+		},
+		{
+			Name:       "events",
+			Mode:       WatchMode,
+			Namespaces: []string{"default"},
 		},
 	}
 	assert.EqualValues(t, expected, r1.Objects)
@@ -64,16 +62,11 @@ func TestValidConfigs(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cfg)
 
-	invalid_api_config := cfg.Receivers[config.NewComponentIDWithName(typeStr, "invalid_api")].(*Config)
 	invalid_resource_config := cfg.Receivers[config.NewComponentIDWithName(typeStr, "invalid_resource")].(*Config)
 
-	invalid_api_config.makeDiscoveryClient = getMockDiscoveryClient
 	invalid_resource_config.makeDiscoveryClient = getMockDiscoveryClient
 
-	err = invalid_api_config.Validate()
-	assert.ErrorContains(t, err, "api group fakev1 not found")
-
 	err = invalid_resource_config.Validate()
-	assert.ErrorContains(t, err, "api resource fake_resource not found in api group v1")
+	assert.ErrorContains(t, err, "resource fake_resource not found")
 
 }
