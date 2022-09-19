@@ -8,7 +8,6 @@ import (
 	"go.opentelemetry.io/collector/consumer"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -27,7 +26,7 @@ func newReceiver(params component.ReceiverCreateSettings, config *Config, consum
 		return nil, err
 	}
 
-	return k8sobjectreceiver{
+	return &k8sobjectreceiver{
 		client:    client,
 		setting:   params,
 		consumer:  consumer,
@@ -36,7 +35,7 @@ func newReceiver(params component.ReceiverCreateSettings, config *Config, consum
 	}, nil
 }
 
-func (kr k8sobjectreceiver) Start(ctx context.Context, host component.Host) error {
+func (kr *k8sobjectreceiver) Start(ctx context.Context, host component.Host) error {
 	kr.setting.Logger.Info("Object Receiver started")
 
 	for _, object := range kr.objects {
@@ -45,7 +44,7 @@ func (kr k8sobjectreceiver) Start(ctx context.Context, host component.Host) erro
 	return nil
 }
 
-func (kr k8sobjectreceiver) Shutdown(context.Context) error {
+func (kr *k8sobjectreceiver) Shutdown(context.Context) error {
 	kr.setting.Logger.Info("Object Receiver stopped")
 	for _, stopperChan := range kr.stopperChanList {
 		close(stopperChan)
@@ -121,8 +120,7 @@ func (kr *k8sobjectreceiver) startWatch(ctx context.Context, config *K8sObjectsC
 	for {
 		select {
 		case data := <-res:
-			udata := data.Object.(*unstructured.Unstructured)
-			logs := unstructuredToLogData(udata)
+			logs := watchEventToLogData(data)
 			kr.consumer.ConsumeLogs(ctx, logs)
 		case <-stopperChan:
 			watch.Stop()

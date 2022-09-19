@@ -99,7 +99,6 @@ func (c *Config) getDynamicClient() (dynamic.Interface, error) {
 
 func (c *Config) getValidObjects() (map[string]*schema.GroupVersionResource, error) {
 	dc, err := c.getDiscoveryClient()
-	dc.ServerPreferredResources()
 	if err != nil {
 		return nil, err
 	}

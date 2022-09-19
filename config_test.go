@@ -27,6 +27,10 @@ func TestLoadConfig(t *testing.T) {
 	require.Equal(t, len(cfg.Receivers), 1)
 
 	r1 := cfg.Receivers[config.NewComponentID(typeStr)].(*Config)
+
+	err = r1.Validate()
+	require.Error(t, err)
+
 	r1.makeDiscoveryClient = getMockDiscoveryClient
 
 	expected := []*K8sObjectsConfig{
